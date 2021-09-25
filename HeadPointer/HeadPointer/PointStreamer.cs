@@ -6,7 +6,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 
-
 internal class PointStreamer : Bus
 {
     bool isStreaming;
