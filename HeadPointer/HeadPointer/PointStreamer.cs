@@ -36,22 +36,22 @@ internal class PointStreamer : Bus
                 GetCursorPos(out POINT posOnScr);
                 base.Send("EyeTracker", JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    {"x",posOnScr.X/SystemParameters.PrimaryScreenWidth},
-                    {"y",posOnScr.Y/SystemParameters.PrimaryScreenHeight},
-                    {"pv",1},
-                    {"ts",DateTime.Now.Ticks/10},
+                    { "x", posOnScr.X / SystemParameters.PrimaryScreenWidth },
+                    { "y", posOnScr.Y / SystemParameters.PrimaryScreenHeight },
+                    { "pv", 1 },
+                    { "ts", DateTime.Now.Ticks / 10 },
                 }));
                 base.Send("EyeTracker", JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    {"lx",0},
-                    {"ly",0},
-                    {"lz",0},
-                    {"lv",1},
-                    {"rx",0},
-                    {"ry",0},
-                    {"rz",0},
-                    {"rv",1},
-                    {"ts",DateTime.Now.Ticks/10},
+                    { "lx" , 0 },
+                    { "ly" , 0 },
+                    { "lz" , 0 },
+                    { "lv" , 1 },
+                    { "rx" , 0 },
+                    { "ry" , 0 },
+                    { "rz" , 0 },
+                    { "rv" , 1 },
+                    { "ts" , DateTime.Now.Ticks / 10 },
                 }));
                 Thread.Sleep(30);
             }
