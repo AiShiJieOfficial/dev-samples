@@ -68,24 +68,45 @@ internal class PointStreamer : Bus
             case "NodeAdded":
                 base.Send(e.NodeId, JsonConvert.SerializeObject(new Dictionary<string, object>
                     {
-                        { "NodeType", "Pointer" },
-                        { "NodeId", base.NodeId },
-                        { "NodePath", Assembly.GetExecutingAssembly().Location },
-                        { "NodeInfo", new Dictionary<string, object>
+                        {
+                            "NodeTypes", new List<string> { "Pointer" }
+                        },
+                        {
+                            "NodeId", base.NodeId
+                        },
+                        {
+                            "NodePath", Assembly.GetExecutingAssembly().Location
+                        },
+                        {
+                            "SendChannels", new List<object>
                             {
-                                { "SerialNumber", SerialNumber },
-                                { "Model", Model },
-                                { "Generation", Generation },
-                                { "FirmwareVersion", FirmwareVersion },
-                                { "SamplingFrequency", SamplingFrequency },
-                            } },
-                        { "NodeChannels", new Dictionary<string, object>
-                            {
-                                { "In", null },
-                                { "Out", new List<string> { "EyeTracker" } },
-                            } },
-                        { "Id", Guid.NewGuid().ToString() },
-                        { "TimeStamp", $"{DateTime.UtcNow:o}" },
+                                new Dictionary<string, object>
+                                {
+                                    {
+                                        "Name", "EyeTracker"
+                                    },
+                                    {
+                                        "Details", new Dictionary<string, object>
+                                        {
+                                            { "SerialNumber", SerialNumber },
+                                            { "Model", Model },
+                                            { "Generation", Generation },
+                                            { "FirmwareVersion", FirmwareVersion },
+                                            { "SamplingFrequency", SamplingFrequency },
+                                        }
+                                    },
+                                },
+                            }
+                        },
+                        {
+                            "ReceiveChannels", null
+                        },
+                        {
+                            "Id", Guid.NewGuid().ToString()
+                        },
+                        {
+                            "TimeStamp", $"{DateTime.UtcNow:o}"
+                        },
                     }));
                 break;
             default:
