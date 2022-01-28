@@ -10,55 +10,59 @@ public class Bus
 {
     public event EventHandler<NodeEventArgs> NodeEvent;
     public event EventHandler<BusEventArgs> BusEvent;
-    public string NodeId;
-    public Dictionary<string, RawNode> Nodes;
 
-    NetMQBeacon m_beacon;
-    NetMQPoller m_poller;
-    PublisherSocket m_publisher;
-    SubscriberSocket m_subscriber;
+    public string NodeId { get; }
+    public List<string> AllNodeIds => nodes.Keys.ToList();
 
-    BlockingCollection<NetMQMessage> sendQueue = new BlockingCollection<NetMQMessage>();
-    Action sendJob;
+    NetMQBeacon beacon;
+    NetMQPoller poller;
+    PublisherSocket publisher;
+    SubscriberSocket subscriber;
+    NetMQTimer timer;
+
+    readonly Dictionary<string, RawNode> nodes;
+    readonly BlockingCollection<NetMQMessage> sendQueue;
 
     public Bus()
     {
         NodeId = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
-        Nodes = new Dictionary<string, RawNode>();
+        nodes = new Dictionary<string, RawNode>();
+        sendQueue = new BlockingCollection<NetMQMessage>();
     }
 
-    int m_randomPort;
+    int randomPort;
+    Action sendJob;
     public void Init(int udpPort)
     {
         Task.Run(() =>
         {
-            NetMQTimer timer = new NetMQTimer(TimeSpan.FromSeconds(1));
+            timer = new NetMQTimer(TimeSpan.FromSeconds(1));
             timer.Elapsed += Timer_Elapsed;
 
-            using (m_subscriber = new SubscriberSocket())
-            using (m_publisher = new PublisherSocket())
-            using (m_beacon = new NetMQBeacon())
-            using (m_poller = new NetMQPoller { m_subscriber, m_beacon, timer })
+            using (subscriber = new SubscriberSocket())
+            using (publisher = new PublisherSocket())
+            using (beacon = new NetMQBeacon())
+            using (poller = new NetMQPoller { subscriber, beacon, timer })
             {
-                m_subscriber.Subscribe("Public");
-                m_subscriber.Subscribe(NodeId);
-                m_subscriber.ReceiveReady += M_subscriber_ReceiveReady;
+                subscriber.Subscribe("Public");
+                subscriber.Subscribe(NodeId);
+                subscriber.ReceiveReady += Subscriber_ReceiveReady;
 
-                m_randomPort = m_publisher.BindRandomPort("tcp://*");
+                randomPort = publisher.BindRandomPort("tcp://*");
 
-                m_beacon.Configure(udpPort);
-                m_beacon.Publish($"{NodeId}:{m_randomPort}", TimeSpan.FromSeconds(1));
-                m_beacon.Subscribe("");
-                m_beacon.ReceiveReady += M_beacon_ReceiveReady;
+                beacon.Configure(udpPort);
+                beacon.Publish($"ASJ1 {NodeId}:{randomPort}", TimeSpan.FromSeconds(1));
+                beacon.Subscribe("");
+                beacon.ReceiveReady += Beacon_ReceiveReady;
 
-                m_poller.Run();
+                poller.Run();
             }
         });
     }
 
     public void Subscribe(string channel)
     {
-        m_subscriber?.Subscribe(channel);
+        subscriber?.Subscribe(channel);
     }
 
     public void Send(string channel, string msg)
@@ -69,7 +73,7 @@ public class Bus
             {
                 while (true)
                 {
-                    m_publisher?.SendMultipartMessage(sendQueue.Take());
+                    publisher?.SendMultipartMessage(sendQueue.Take());
                 }
             };
             Task.Run(sendJob);
@@ -82,42 +86,48 @@ public class Bus
 
     public void Quit()
     {
-        m_poller.Stop();
+        poller.Stop();
     }
 
-    private void M_subscriber_ReceiveReady(object sender, NetMQSocketEventArgs e)
+    private void Subscriber_ReceiveReady(object sender, NetMQSocketEventArgs e)
     {
-        var msg = m_subscriber.ReceiveMultipartMessage();
+        var msg = subscriber.ReceiveMultipartMessage();
         BusEvent?.Invoke(this, new BusEventArgs { Channel = msg[0].ConvertToString(), Message = msg[1].ConvertToString() });
     }
 
-    private async void M_beacon_ReceiveReady(object sender, NetMQBeaconEventArgs e)
+    private async void Beacon_ReceiveReady(object sender, NetMQBeaconEventArgs e)
     {
-        var msg = m_beacon.Receive();
-        var beacon = msg.String.Split(':');
-        var nodeId = beacon[0];
-        int.TryParse(beacon[1], out int port);
+        var msg = beacon.Receive();
+        var parts = msg.String.Split(' ');
+        var magic = parts[0].Substring(0, 3);
+        if (magic != "ASJ") return;
+        var version = parts[0].Substring(3);
+        if (version != "1") return;
+
+        var nodeInfo = parts[1].Split(':');
+        var nodeId = nodeInfo[0];
+        int.TryParse(nodeInfo[1], out int port);
 
         var endPoint = $"tcp://{msg.PeerHost}:{port}";
-        if (!Nodes.ContainsKey(nodeId))
+        if (!nodes.ContainsKey(nodeId))
         {
-            Nodes[nodeId] = new RawNode { EndPoint = endPoint, LastAlive = DateTime.Now };
-            m_subscriber.Connect(endPoint);
+            nodes[nodeId] = new RawNode { EndPoint = endPoint, LastAlive = DateTime.Now };
+            subscriber.Connect(endPoint);
             await Task.Delay(1500);
             NodeEvent?.Invoke(this, new NodeEventArgs { Type = "NodeAdded", NodeId = nodeId });
         }
-        else Nodes[beacon[0]].LastAlive = DateTime.Now;
+        else nodes[nodeId].LastAlive = DateTime.Now;
     }
 
     private void Timer_Elapsed(object sender, NetMQTimerEventArgs e)
     {
-        Nodes
+        nodes
             .Where(n => DateTime.Now > n.Value.LastAlive + TimeSpan.FromSeconds(5))
             .ToList()
             .ForEach(kv =>
             {
-                Nodes.Remove(kv.Key);
-                m_subscriber.Disconnect(kv.Value.EndPoint);
+                nodes.Remove(kv.Key);
+                subscriber.Disconnect(kv.Value.EndPoint);
                 NodeEvent?.Invoke(this, new NodeEventArgs { Type = "NodeRemoved", NodeId = kv.Key });
             });
     }
