@@ -14,8 +14,8 @@ internal class SwitchSignal : Bus
     public void start()
     {
         this.Init(6502);
-        this.NodeEvent += OnNodeEvent;
         this.BusEvent += OnBusEvent;
+        this.MessageEvent += OnMessageEvent;
 
         if (job?.IsAlive == true)
         {
@@ -32,7 +32,6 @@ internal class SwitchSignal : Bus
                 {
                     base.Send("Switch", JsonConvert.SerializeObject(new Dictionary<string, object>
                     {
-                        { "NodeId", base.NodeId },
                         { "Key", "EMG" },
                         { "State", "Up" },
                     }));
@@ -41,7 +40,6 @@ internal class SwitchSignal : Bus
                 {
                     base.Send("Switch", JsonConvert.SerializeObject(new Dictionary<string, object>
                     {
-                        { "NodeId", base.NodeId },
                         { "Key", "EMG" },
                         { "State", "Down" },
                     }));
@@ -53,7 +51,7 @@ internal class SwitchSignal : Bus
         job.Start();
     }
 
-    private void OnNodeEvent(object sender, NodeEventArgs e)
+    private void OnBusEvent(object sender, BusEventArgs e)
     {
         switch (e.Type)
         {
@@ -62,9 +60,6 @@ internal class SwitchSignal : Bus
                     {
                         {
                             "NodeTypes", new List<string> { "Peripheral" }
-                        },
-                        {
-                            "NodeId", base.NodeId
                         },
                         {
                             "NodePath", Assembly.GetExecutingAssembly().Location
@@ -86,12 +81,6 @@ internal class SwitchSignal : Bus
                         {
                             "ReceiveChannels", null
                         },
-                        {
-                            "Id", Guid.NewGuid().ToString()
-                        },
-                        {
-                            "TimeStamp", $"{DateTime.UtcNow:o}"
-                        },
                     }));
                 break;
             default:
@@ -99,7 +88,7 @@ internal class SwitchSignal : Bus
         }
     }
 
-    private void OnBusEvent(object sender, BusEventArgs e)
+    private void OnMessageEvent(object sender, MessageEventArgs e)
     {
     }
 

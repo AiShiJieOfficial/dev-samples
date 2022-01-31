@@ -5,7 +5,13 @@ VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwitchHub", "SwitchHub\SwitchHub.csproj", "{667AB84A-B8A3-4202-AEC7-34814301A66F}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Shared", "..\Shared\Shared\Shared.shproj", "{A780B771-1C1D-4D38-B6B3-F769666BE750}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		..\Shared\Shared\Shared.projitems*{667ab84a-b8a3-4202-aec7-34814301a66f}*SharedItemsImports = 4
+		..\Shared\Shared\Shared.projitems*{a780b771-1c1d-4d38-b6b3-f769666be750}*SharedItemsImports = 13
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU

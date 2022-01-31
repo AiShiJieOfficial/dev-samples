@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 
 public class Bus
 {
-    public event EventHandler<NodeEventArgs> NodeEvent;
     public event EventHandler<BusEventArgs> BusEvent;
+    public event EventHandler<MessageEventArgs> MessageEvent;
 
     public string NodeId { get; }
     public List<string> AllNodeIds => nodes.Keys.ToList();
@@ -51,7 +51,7 @@ public class Bus
                 randomPort = publisher.BindRandomPort("tcp://*");
 
                 beacon.Configure(udpPort);
-                beacon.Publish($"ASJ1 {NodeId}:{randomPort}", TimeSpan.FromSeconds(1));
+                beacon.Publish($"ASJ/1\r\n{NodeId}:{randomPort}", TimeSpan.FromSeconds(1));
                 beacon.Subscribe("");
                 beacon.ReceiveReady += Beacon_ReceiveReady;
 
@@ -78,9 +78,10 @@ public class Bus
             };
             Task.Run(sendJob);
         }
+        var rawMsg = $"ASJ/1\r\nId:{Guid.NewGuid()}\r\nTimestamp:{DateTime.UtcNow:o}\r\nNodeId:{NodeId}\r\n\r\n{msg}";
         var m = new NetMQMessage(2);
         m.Append(channel);
-        m.Append(msg);
+        m.Append(rawMsg);
         sendQueue.Add(m);
     }
 
@@ -92,16 +93,30 @@ public class Bus
     private void Subscriber_ReceiveReady(object sender, NetMQSocketEventArgs e)
     {
         var msg = subscriber.ReceiveMultipartMessage();
-        BusEvent?.Invoke(this, new BusEventArgs { Channel = msg[0].ConvertToString(), Message = msg[1].ConvertToString() });
+        var raw = msg[1].ConvertToString().Split("\r\n\r\n");
+        var header = raw[0];
+        var body = raw[1];
+        var split = header.Split("\r\n");
+        var id = split[1].Split(new char[] { ':' }, 2)[1];
+        var ts = split[2].Split(new char[] { ':' }, 2)[1];
+        var nodeid = split[3].Split(new char[] { ':' }, 2)[1];
+        MessageEvent?.Invoke(this, new MessageEventArgs
+        {
+            Channel = msg[0].ConvertToString(),
+            Id = id,
+            Timestamp = DateTime.Parse(ts),
+            NodeId = nodeid,
+            Message = body
+        });
     }
 
     private async void Beacon_ReceiveReady(object sender, NetMQBeaconEventArgs e)
     {
         var msg = beacon.Receive();
-        var parts = msg.String.Split(' ');
+        var parts = msg.String.Split("\r\n");
         var magic = parts[0].Substring(0, 3);
         if (magic != "ASJ") return;
-        var version = parts[0].Substring(3);
+        var version = parts[0].Substring(4);
         if (version != "1") return;
 
         var nodeInfo = parts[1].Split(':');
@@ -114,9 +129,9 @@ public class Bus
             nodes[nodeId] = new RawNode { EndPoint = endPoint, LastAlive = DateTime.Now };
             subscriber.Connect(endPoint);
             await Task.Delay(1500);
-            NodeEvent?.Invoke(this, new NodeEventArgs { Type = "NodeAdded", NodeId = nodeId });
+            BusEvent?.Invoke(this, new BusEventArgs { Type = "NodeAdded", NodeId = nodeId });
         }
-        else nodes[nodeId].LastAlive = DateTime.Now;
+        else nodes[nodeInfo[0]].LastAlive = DateTime.Now;
     }
 
     private void Timer_Elapsed(object sender, NetMQTimerEventArgs e)
@@ -128,7 +143,7 @@ public class Bus
             {
                 nodes.Remove(kv.Key);
                 subscriber.Disconnect(kv.Value.EndPoint);
-                NodeEvent?.Invoke(this, new NodeEventArgs { Type = "NodeRemoved", NodeId = kv.Key });
+                BusEvent?.Invoke(this, new BusEventArgs { Type = "NodeRemoved", NodeId = kv.Key });
             });
     }
 }
@@ -139,14 +154,17 @@ public class RawNode
     public DateTime LastAlive;
 }
 
-public class NodeEventArgs : EventArgs
+public class BusEventArgs : EventArgs
 {
     public string Type;
     public string NodeId;
 }
 
-public class BusEventArgs : EventArgs
+public class MessageEventArgs : EventArgs
 {
     public string Channel;
+    public string Id;
+    public DateTime Timestamp;
+    public string NodeId;
     public string Message;
 }

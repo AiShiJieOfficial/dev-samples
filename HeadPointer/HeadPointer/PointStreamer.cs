@@ -20,8 +20,8 @@ internal class PointStreamer : Bus
     public void start()
     {
         this.Init(6502);
-        this.NodeEvent += OnNodeEvent;
         this.BusEvent += OnBusEvent;
+        this.MessageEvent += OnMessageEvent;
 
         if (job?.IsAlive == true)
         {
@@ -36,7 +36,6 @@ internal class PointStreamer : Bus
                 GetCursorPos(out POINT posOnScr);
                 base.Send("EyeTracker", JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    { "NodeId", base.NodeId },
                     { "x", posOnScr.X / SystemParameters.PrimaryScreenWidth },
                     { "y", posOnScr.Y / SystemParameters.PrimaryScreenHeight },
                     { "pv", 1 },
@@ -44,7 +43,6 @@ internal class PointStreamer : Bus
                 }));
                 base.Send("EyeTracker", JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    { "NodeId", base.NodeId },
                     { "lx" , 0 },
                     { "ly" , 0 },
                     { "lz" , 0 },
@@ -61,7 +59,7 @@ internal class PointStreamer : Bus
         job.Start();
     }
 
-    private void OnNodeEvent(object sender, NodeEventArgs e)
+    private void OnBusEvent(object sender, BusEventArgs e)
     {
         switch (e.Type)
         {
@@ -70,9 +68,6 @@ internal class PointStreamer : Bus
                     {
                         {
                             "NodeTypes", new List<string> { "Pointer" }
-                        },
-                        {
-                            "NodeId", base.NodeId
                         },
                         {
                             "NodePath", Assembly.GetExecutingAssembly().Location
@@ -101,12 +96,6 @@ internal class PointStreamer : Bus
                         {
                             "ReceiveChannels", null
                         },
-                        {
-                            "Id", Guid.NewGuid().ToString()
-                        },
-                        {
-                            "TimeStamp", $"{DateTime.UtcNow:o}"
-                        },
                     }));
                 break;
             default:
@@ -114,7 +103,7 @@ internal class PointStreamer : Bus
         }
     }
 
-    private void OnBusEvent(object sender, BusEventArgs e)
+    private void OnMessageEvent(object sender, MessageEventArgs e)
     {
     }
 
