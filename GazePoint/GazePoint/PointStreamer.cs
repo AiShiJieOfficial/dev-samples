@@ -40,7 +40,6 @@ internal class PointStreamer : Bus
         {
             while (isStreaming)
             {
-                GetCursorPos(out POINT posOnScr);
                 base.Send("EyeTracker", JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
                     { "x", fpogx },
@@ -124,9 +123,6 @@ internal class PointStreamer : Bus
 
         base.Quit();
     }
-
-    [DllImport("user32.dll")]
-    public static extern bool GetCursorPos(out POINT lpPoint);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT
