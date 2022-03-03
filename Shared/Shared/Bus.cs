@@ -50,7 +50,7 @@ public class Bus
 
                 randomPort = publisher.BindRandomPort("tcp://*");
 
-                beacon.Configure(udpPort);
+                beacon.Configure(udpPort, "*");
                 beacon.Publish($"ASJ/1\r\n{NodeId}:{randomPort}", TimeSpan.FromSeconds(1));
                 beacon.Subscribe("");
                 beacon.ReceiveReady += Beacon_ReceiveReady;
