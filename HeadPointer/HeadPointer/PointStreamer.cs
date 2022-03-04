@@ -8,7 +8,7 @@ using System.Windows;
 
 internal class PointStreamer : Bus
 {
-    bool isStreaming;
+    volatile bool isStreaming;
     Thread job;
 
     string SerialNumber = "SerialNumber";

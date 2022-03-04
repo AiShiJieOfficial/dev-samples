@@ -7,7 +7,7 @@ using System.Threading;
 
 internal class SwitchSignal : Bus
 {
-    bool isStreaming;
+    volatile bool isStreaming;
     Thread job;
     POINT prevPosOnScr;
 

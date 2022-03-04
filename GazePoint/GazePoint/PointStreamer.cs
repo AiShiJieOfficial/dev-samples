@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 internal class PointStreamer : Bus
 {
-    bool isStreaming;
+    volatile bool isStreaming;
     Thread job;
 
     string SerialNumber = "SerialNumber";
